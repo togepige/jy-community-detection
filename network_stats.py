@@ -8,7 +8,7 @@ class NetworkStats(object):
 
     def __init__(self):
         self.network = nx.DiGraph()
-        self.communities = []
+        self.communities = {}
     # Extract edges data from snap network file
     def _get_edges(self, file_name):
         edges = []
@@ -29,14 +29,15 @@ class NetworkStats(object):
     # read the community information from file
     def read_community_from_file(self, file_name):
         memberships = defaultdict(set)
+        if not os.path.exists(file_name):
+            return
         with open(file_name) as f:
             for line in f:
-                node_s, communities = map(lambda s: s.replace("\n", " ").strip(), re.split("[\t]", line))
-                for commu in map(int, communities.split(" ")):
+                node_s, communities = map(lambda s: s.replace("\n", " ").strip(), re.split("[\t,]", line))
+                for commu in communities.split(" "):
                     memberships[commu].add(int(node_s))
         
-        for _, nodes in memberships.items():
-            self.communities.append(nodes)
+        self.communities = memberships
         
         
     def init_fome_directory(self, directory):
