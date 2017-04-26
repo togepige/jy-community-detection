@@ -122,13 +122,28 @@ class JYCommunityDetection(object):
                     # calculate the percentage of the internal edges
                     # score = full_edges * 10 + Edge(node->local) * 1
                     connected = 0
+                    score = 0
                     for local_node in local_validated:
-                        if network.has_edge(neighbor, local_node):
+                        if network.has_edge(neighbor, local_node) and network.has_edge(local_node, neighbor): # full-edge from a local node to the current node
+                            score += 10
                             connected += 1
-                    score = float(connected) / len(local_validated)
-                    if score > local_threshold or (len(network.successors(neighbor)) != 0 and float(connected) / len(network.successors(neighbor)) > node_threshold):
-                        candidates.append(neighbor)
-
+                        elif network.has_edge(neighbor, local_node): #  or network.has_edge(local_node, neighbor): # one direction edge from neighbor to a local node
+                            score += 1
+                            connected += 1
+                    
+                    # score = float(connected) / len(local_validated)
+                    heapq.heappush(neighbor_scores, (-score, -connected, neighbor))
+                    # if score > local_threshold or (len(network.successors(neighbor)) != 0 and float(connected) / len(network.successors(neighbor)) > node_threshold):
+                    #     candidates.append(neighbor)
+                
+                # 2. Check all candidate neighbors based on the order of score
+                while neighbor_scores:
+                    score, connected, node = heapq.heappop(neighbor_scores)
+                    score = -score # negative to positive
+                    connected = -connected
+                    if float(connected) / len(local_validated) > local_threshold or (len(network.successors(neighbor)) != 0 and float(connected) / len(network.successors(neighbor)) > node_threshold):
+                        candidates.append(node)
+                
                 for candidate in candidates:
                     # remove un-related candidate
                     inside_connection = 0
@@ -171,6 +186,8 @@ class JYCommunityDetection(object):
 # fill un-checked nodes to a closest community
 def fill_nodes_to_community(network, communities):
     print("Missing to check...")
+    if len(communities) == 0:
+        return
     checked_nodes = reduce(set.union, communities)
     missing_nodes = set(network.nodes()) - checked_nodes
     # print(len(set(network.nodes())))
@@ -265,18 +282,3 @@ if __name__ == "__main__":
     print("--Missing--")
     print(result["missing_nodes"])
     save_results(result, os.path.join(data_dir, "result_clique.json"))
-
-    # i = 0.1
-    # j = 0.1
-    # k = 0.1
-    # max_jaccard = 0
-    # while i < 1:
-    #     while j < 1:
-    #         while k < 1:
-    #             communities, memberships = detector.detect(ns.network,i, j, k)
-    #             results = detector.analyse(communities, memberships, ns.communities)
-    #             max_jaccard = max(results["jaccard_avg"], max_jaccard)
-    #             k += 0.1
-    #         j += 0.1
-    #     i += 0.1
-    # print(max_jaccard)
